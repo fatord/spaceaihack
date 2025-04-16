@@ -3,10 +3,10 @@
 ## Requirements
 
 - Python 3.8+
-- `numpy`, `matplotlib`, `scipy`, `pandas`, `requests`
+- `numpy`, `matplotlib`, `scipy`, `pandas`, `requests`, `flask`
 
 Install with:
 
 ```bash
-pip install numpy matplotlib scipy pandas requests
+pip install numpy matplotlib scipy pandas requests flask
 ```
