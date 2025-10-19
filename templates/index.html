@@ -1,8 +1,57 @@
 <!DOCTYPE html>
 <html>
-<head><title>Spacecraft Simulator</title></head>
+<head>
+    <meta charset="utf-8" />
+    <title>Spacecraft Trajectory Simulator</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 2rem; }
+        label { display:block; margin-top: .5rem; }
+        input, select { padding: .3rem; margin-top: .2rem; }
+        .row { margin: .6rem 0; }
+    </style>
+    </head>
 <body>
-    <h1>Space Trajectory Sim</h1>
-    <a href="/run"><button>Run</button></a>
+    <h1>Spacecraft Trajectory Sim</h1>
+    <h2>Outputs a CSV and PNG after running</h2>
+    <form method="POST" action="/run">
+        <div class="row">
+            <label for="duration_s">duration (s)</label>
+            <input type="number" step="1" id="duration_s" name="duration_s" value="86400">
+        </div>
+        <div class="row">
+            <label for="dt_s">dt (s)</label>
+            <input type="number" step="0.1" id="dt_s" name="dt_s" value="10">
+        </div>
+        <div class="row">
+            <label>Bodies</label>
+            <label><input type="checkbox" name="bodies" value="Sun" checked> Sun</label>
+            <label><input type="checkbox" name="bodies" value="Earth" checked> Earth</label>
+        </div>
+        <button type="submit">Run Simulation</button>
+    </form>
+
+    <h2>Interactive Live Session (modifiable speed)</h2>
+    <form method="POST" action="/start">
+        <div class="row">
+            <label for="duration_live">duration (s)</label>
+            <input type="number" step="1" id="duration_live" name="duration_s" value="7200">
+        </div>
+        <div class="row">
+            <label for="dt_live">dt (s)</label>
+            <input type="number" step="1" id="dt_live" name="dt_s" value="5">
+        </div>
+        <div class="row">
+            <label for="speed">speed x</label>
+            <input type="number" step="0.25" id="speed" name="speed" value="10">
+        </div>
+        <div class="row">
+            <label for="frame">frame</label>
+            <select id="frame" name="frame">
+                <option value="sun" selected>sun</option>
+                <option value="earth">earth</option>
+            </select>
+        </div>
+        <button type="submit">Start Live</button>
+    </form>
 </body>
 </html>

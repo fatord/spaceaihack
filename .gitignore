@@ -1,0 +1,51 @@
+# python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# virtual envs
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# env files
+.env
+.env.*
+*.env
+
+# builds / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+wheels/
+
+# tests / coverage / caches
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+.cache/
+
+# editors / os
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# logs
+logs/
+*.log
+
+# keep static outputs tracked
+# (do not ignore the static/ folder)
+# static/
+

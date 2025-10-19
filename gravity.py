@@ -1,16 +1,37 @@
-# gravity.py
-import numpy as np
-G = 6.67430e-11  # Gravitational constant
+from __future__ import annotations
 
-# Applies gravitational acceleration from planetary data to the spacecraft
-def apply_gravity(position, velocity, planetary_data, spacecraft_mass, time_step):
+import math
+import numpy as np
+
+from config import DEFAULTS
+
+# g const
+G = 6.67430e-11
+
+
+def gravitational_acceleration(position: np.ndarray, planetary_data) -> np.ndarray:
+    """grav accel at pos from all bodies"""
+    ax = np.zeros(3, dtype=float)
+    eps2 = float(DEFAULTS.softening_m) ** 2
+
     for _, planet in planetary_data.iterrows():
-        planet_mass = planet.get('mass', 0) * 1.989e30  # Convert from solar mass to kg
-        planet_position = np.array([planet.get('x', 0), planet.get('y', 0), planet.get('z', 0)])
-        distance_vector = planet_position - position
-        distance = np.linalg.norm(distance_vector)
-        if distance > 0:
-            gravitational_force = G * spacecraft_mass * planet_mass / distance**2
-            gravitational_acceleration = (gravitational_force / spacecraft_mass) * (distance_vector / distance)
-            velocity += gravitational_acceleration * time_step
-    return velocity
+        m = float(planet.get("mass_kg", 0.0))
+        px = float(planet.get("x", 0.0))
+        py = float(planet.get("y", 0.0))
+        pz = float(planet.get("z", 0.0))
+        if not (math.isfinite(m) and math.isfinite(px) and math.isfinite(py) and math.isfinite(pz)):
+            continue
+
+        rvec = np.array([px, py, pz], dtype=float) - position
+        r2 = float(np.dot(rvec, rvec)) + eps2
+        inv_r3 = 1.0 / (r2 * math.sqrt(r2))
+        ax += G * m * inv_r3 * rvec
+
+    return ax
+
+
+def apply_gravity(position, velocity, planetary_data, spacecraft_mass, time_step):
+    """compat shim: update v with grav accel (mass-independent)"""
+    a = gravitational_acceleration(np.asarray(position, dtype=float), planetary_data)
+    v = np.asarray(velocity, dtype=float) + a * float(time_step)
+    return v

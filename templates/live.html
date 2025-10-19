@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Live Sim</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1rem 2rem; }
+    .controls { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin-bottom: .5rem; }
+    .status { margin: .5rem 0; }
+    canvas { border: 1px solid #ccc; background: #fafafa; }
+    .row { margin:.5rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Live Spacecraft Sim</h1>
+  <div class="controls">
+    <button id="play">Play</button>
+    <button id="pause">Pause</button>
+    <button id="step">Step</button>
+    <button id="reset">Reset</button>
+    <label>speed x
+      <select id="speed">
+        <option>0.25</option>
+        <option>1</option>
+        <option selected>10</option>
+        <option>20</option>
+        <option>50</option>
+        <option>100</option>
+      </select>
+    </label>
+    <label>frame
+      <select id="frame">
+        <option value="sun" selected>sun</option>
+        <option value="earth">earth</option>
+      </select>
+    </label>
+  </div>
+  <div class="status"><span id="readout">starting…</span></div>
+
+  <canvas id="plot" width="800" height="600"></canvas>
+
+  <div id="done" class="row" style="display:none;">
+    <strong>Simulation complete!</strong>
+    <div>
+      <a id="csv" href="#" target="_blank">Download CSV</a>
+      &nbsp;|&nbsp;
+      <a id="png" href="#" target="_blank">Download PNG</a>
+    </div>
+  </div>
+
+  <script>
+    const sessionId = {{ session_id|tojson }};
+    let polling = false;
+    let pollTimer = null;
+    function startPoll(){
+      if (polling) return;
+      polling = true;
+      pollTimer = setInterval(async () => {
+        try {
+          const res = await fetch(`/state/${sessionId}`);
+          if (!res.ok) return;
+          const d = await res.json();
+          handleSnap(d);
+          if (d.status === 'done' || d.status === 'error') { clearInterval(pollTimer); }
+        } catch {}
+      }, 800);
+    }
+
+    const es = new EventSource(`/stream/live/${sessionId}`);
+    es.onerror = () => { startPoll(); };
+    const canvas = document.getElementById('plot');
+    const ctx = canvas.getContext('2d');
+    const readout = document.getElementById('readout');
+    const done = document.getElementById('done');
+    const aCsv = document.getElementById('csv');
+    const aPng = document.getElementById('png');
+    const selSpeed = document.getElementById('speed');
+    const selFrame = document.getElementById('frame');
+
+    // ctrls
+    document.getElementById('play').onclick = () => send({action:'resume'});
+    document.getElementById('pause').onclick = () => send({action:'pause'});
+    document.getElementById('step').onclick = () => send({action:'step'});
+    document.getElementById('reset').onclick = () => send({action:'reset'});
+    selSpeed.onchange = () => send({action:'set_speed', speed: parseFloat(selSpeed.value)});
+    selFrame.onchange = () => { frameMode = selFrame.value; };
+
+    function send(payload){
+      fetch(`/control/${sessionId}`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    }
+
+    let frameMode = 'sun';
+
+    function handleSnap(d){
+      const pct = (d.progress||0) + '%';
+      const t = d.t_sim.toFixed(1);
+      const r = (d.r_norm||0).toExponential(3);
+      const v = (d.v_norm||0).toExponential(3);
+      const e = (d.energy_J||0).toExponential(3);
+      readout.textContent = `${d.status} ${pct} t=${t}s r=${r}m v=${v}m/s e=${e}J/kg`;
+
+      if (d.csv_url) { aCsv.href = d.csv_url; }
+      if (d.png_url) { aPng.href = d.png_url; }
+
+      // Draw
+      const points = (frameMode === 'earth') ? (d.ring_geo_xy || []) : (d.ring_xy || []);
+      draw(points);
+
+      if (d.status === 'done' || d.status === 'error') {
+        es.close();
+        done.style.display = '';
+      }
+    }
+
+    es.onmessage = (e) => {
+      const d = JSON.parse(e.data);
+      handleSnap(d);
+    };
+
+    function draw(points){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      if (!points || points.length < 2) return;
+      // autoscale to points
+      let minx=Infinity, miny=Infinity, maxx=-Infinity, maxy=-Infinity;
+      for (const [x,y] of points){
+        if (x<minx) minx=x; if (y<miny) miny=y; if (x>maxx) maxx=x; if (y>maxy) maxy=y;
+      }
+      const padX = (maxx-minx)*0.1 || 1; const padY = (maxy-miny)*0.1 || 1;
+      minx -= padX; maxx += padX; miny -= padY; maxy += padY;
+      const w = canvas.width, h = canvas.height;
+      const sx = w/(maxx-minx), sy = h/(maxy-miny);
+      const s = Math.min(sx, sy);
+      const cx = w/2 - s*(minx+maxx)/2;
+      const cy = h/2 - s*(miny+maxy)/2;
+      ctx.strokeStyle = '#1976d2'; ctx.lineWidth = 1.2; ctx.beginPath();
+      let first = true;
+      for (const [x,y] of points){
+        const X = cx + s*x; const Y = cy + s*y;
+        if (first){ ctx.moveTo(X,Y); first=false; } else { ctx.lineTo(X,Y); }
+      }
+      ctx.stroke();
+      // okay sun and earth
+      ctx.fillStyle = '#f57c00';
+      const oX = cx;
+      const oY = cy;
+      ctx.beginPath(); ctx.arc(oX, oY, 4, 0, Math.PI*2); ctx.fill();
+    }
+  </script>
+</body>
+</html>

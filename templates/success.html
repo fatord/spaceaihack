@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Simulation Progress</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 2rem; }
+        .progress { width: 400px; border: 1px solid #ccc; height: 20px; position: relative; }
+        .bar { background: #4caf50; height: 100%; width: 0%; transition: width .2s; }
+        .row { margin: .6rem 0; }
+        img { max-width: 640px; display: block; margin-top: 1rem; }
+        code { background: #f7f7f7; padding: .2rem .3rem; }
+    </style>
+</head>
+<body>
+    <h1>Simulation Running</h1>
+    <p>Job ID: <code>{{ job_id }}</code></p>
+    <div class="progress"><div id="bar" class="bar"></div></div>
+    <div id="status">Status: starting...</div>
+    <div class="row">t [s]: <span id="t">0</span></div>
+    <div id="links" style="display:none;">
+        <h3>Results</h3>
+        <div><a id="csv" href="#" target="_blank">CSV</a></div>
+        <div><a id="png" href="#" target="_blank">Plot</a></div>
+        <img id="img" alt="Trajectory plot" />
+    </div>
+
+    <script>
+        const jobId = {{ job_id|tojson }};
+        const evt = new EventSource(`/stream/${jobId}`);
+        const bar = document.getElementById('bar');
+        const statusEl = document.getElementById('status');
+        const tEl = document.getElementById('t');
+        const links = document.getElementById('links');
+        const aCsv = document.getElementById('csv');
+        const aPng = document.getElementById('png');
+        const img = document.getElementById('img');
+        evt.onmessage = (e) => {
+            const d = JSON.parse(e.data);
+            bar.style.width = (d.progress || 0) + '%';
+            statusEl.textContent = 'Status: ' + d.status + ' (' + (d.progress || 0) + '%)';
+            if (d.t !== undefined && d.t !== null) tEl.textContent = d.t.toFixed(1);
+
+            if (d.status === 'complete') {
+                evt.close();
+                links.style.display = '';
+                aCsv.href = d.csv_url;
+                aPng.href = d.png_url;
+                img.src = d.png_url + '?_=' + Date.now();
+            }
+            if (d.status === 'error') {
+                evt.close();
+            }
+        };
+    </script>
+</body>
+</html>
+
